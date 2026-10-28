@@ -8,6 +8,7 @@ Responsable de usuarios, roles y autenticación (emisión de JWT).
 | HU | Descripción | Endpoint | Rol |
 |----|-------------|----------|-----|
 | HU-1 | Crear propietario | `POST /users/owner` | ADMIN |
+| HU-2 | Consultar usuario por id (usado por plazoleta para validar el propietario) | `GET /users/{id}` | Autenticado |
 | — | Login (soporte para JWT) | `POST /auth/login` | Público |
 
 ## Requisitos
@@ -56,7 +57,7 @@ curl -X POST http://localhost:8081/users/owner \
 
 En la carpeta `postman/`:
 
-- `plazoleta-usuarios.postman_collection.json`: colección con 19 peticiones y 52 aserciones.
+- `plazoleta-usuarios.postman_collection.json`: colección con 24 peticiones y 64 aserciones.
 - `plazoleta-local.postman_environment.json`: entorno con `baseUrl`, `adminEmail` y `adminPassword`.
 
 1. En Postman: **Import** → seleccionar ambos archivos.
@@ -64,7 +65,8 @@ En la carpeta `postman/`:
 3. Clic derecho sobre la colección → **Run collection** → **Run**.
 
 El orden importa: `01 - Autenticacion` guarda el token del ADMIN, `02 - HU-1` crea el propietario y
-`03 - Seguridad` inicia sesión con ese propietario para probar el 403. Correos y documentos se generan
+`03 - Seguridad` inicia sesión con ese propietario para probar el 403, y `04 - HU-2` lo consulta por id.
+Correos y documentos se generan
 únicos en cada ejecución, así que la colección se puede repetir sin limpiar la base de datos.
 
 Desde consola: `npx newman run postman/plazoleta-usuarios.postman_collection.json -e postman/plazoleta-local.postman_environment.json`
