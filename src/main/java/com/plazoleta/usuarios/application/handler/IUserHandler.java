@@ -6,4 +6,6 @@ import com.plazoleta.usuarios.application.dto.response.UserResponseDto;
 public interface IUserHandler {
 
     UserResponseDto createOwner(OwnerRequestDto ownerRequestDto);
+
+    UserResponseDto getUserById(Long id);
 }

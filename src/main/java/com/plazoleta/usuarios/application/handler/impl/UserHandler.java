@@ -24,4 +24,10 @@ public class UserHandler implements IUserHandler {
         return userResponseMapper.toResponse(
                 userServicePort.createOwner(userRequestMapper.toUser(ownerRequestDto)));
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserResponseDto getUserById(Long id) {
+        return userResponseMapper.toResponse(userServicePort.getUserById(id));
+    }
 }
