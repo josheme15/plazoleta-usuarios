@@ -8,6 +8,7 @@ import com.plazoleta.usuarios.domain.exception.InvalidEmailException;
 import com.plazoleta.usuarios.domain.exception.InvalidPhoneException;
 import com.plazoleta.usuarios.domain.exception.RequiredFieldException;
 import com.plazoleta.usuarios.domain.exception.UnderageUserException;
+import com.plazoleta.usuarios.domain.exception.UserNotFoundException;
 import com.plazoleta.usuarios.domain.model.Role;
 import com.plazoleta.usuarios.domain.model.User;
 import com.plazoleta.usuarios.domain.spi.IPasswordEncoderPort;
@@ -57,6 +58,14 @@ public class UserUseCase implements IUserServicePort {
         user.setRole(Role.OWNER);
         user.setPassword(passwordEncoderPort.encode(user.getPassword()));
         return userPersistencePort.saveUser(user);
+    }
+
+    @Override
+    public User getUserById(Long id) {
+        if (id == null) {
+            throw new RequiredFieldException("id");
+        }
+        return userPersistencePort.findById(id).orElseThrow(UserNotFoundException::new);
     }
 
     private void validateRequiredFields(User user) {
