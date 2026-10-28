@@ -7,6 +7,7 @@ import com.plazoleta.usuarios.domain.exception.InvalidEmailException;
 import com.plazoleta.usuarios.domain.exception.InvalidPhoneException;
 import com.plazoleta.usuarios.domain.exception.RequiredFieldException;
 import com.plazoleta.usuarios.domain.exception.UnderageUserException;
+import com.plazoleta.usuarios.domain.exception.UserNotFoundException;
 import com.plazoleta.usuarios.domain.model.Role;
 import com.plazoleta.usuarios.domain.model.User;
 import com.plazoleta.usuarios.domain.spi.IPasswordEncoderPort;
@@ -24,6 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -233,5 +235,31 @@ class UserUseCaseTest {
         user.setBirthDate(null);
 
         assertThrows(RequiredFieldException.class, () -> userUseCase.createOwner(user));
+    }
+
+    @Test
+    void getUserById_whenUserExists_returnsUser() {
+        User stored = validUser();
+        stored.setId(7L);
+        stored.setRole(Role.OWNER);
+        when(userPersistencePort.findById(7L)).thenReturn(Optional.of(stored));
+
+        User result = userUseCase.getUserById(7L);
+
+        assertSame(stored, result);
+        assertEquals(Role.OWNER, result.getRole());
+    }
+
+    @Test
+    void getUserById_whenUserDoesNotExist_throwsException() {
+        when(userPersistencePort.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(UserNotFoundException.class, () -> userUseCase.getUserById(99L));
+    }
+
+    @Test
+    void getUserById_withNullId_throwsException() {
+        assertThrows(RequiredFieldException.class, () -> userUseCase.getUserById(null));
+        verify(userPersistencePort, never()).findById(any());
     }
 }
