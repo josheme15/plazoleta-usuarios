@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Plazoleta - Usuarios",
-    "description": "Pruebas del microservicio plazoleta-usuarios.\n\nOrden de ejecucion: 01 Autenticacion -> 02 HU-1 -> 03 Seguridad (usar el Collection Runner).\nRequiere el servicio en ejecucion (mvn spring-boot:run) y PostgreSQL (docker compose up -d).",
+    "description": "Pruebas del microservicio plazoleta-usuarios.\n\nOrden de ejecucion: 01 Autenticacion -> 02 HU-1 -> 03 Seguridad -> 04 HU-2 (usar el Collection Runner).\nRequiere el servicio en ejecucion (mvn spring-boot:run) y PostgreSQL (docker compose up -d).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -293,6 +293,7 @@
                   "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
                   "pm.test(\"El usuario queda con rol OWNER\", () => pm.expect(body.role).to.eql(\"OWNER\"));",
+                  "pm.collectionVariables.set(\"ownerId\", body.id);",
                   "pm.test(\"Devuelve los datos enviados\", () => {",
                   "    pm.expect(body.id).to.be.a(\"number\");",
                   "    pm.expect(body.email).to.eql(pm.collectionVariables.get(\"ownerEmail\"));",
@@ -1090,6 +1091,210 @@
           ]
         }
       ]
+    },
+    {
+      "name": "04 - HU-2 Consultar usuario por id",
+      "description": "GET /users/{id}. Lo consume el microservicio plazoleta para validar el rol del propietario.",
+      "item": [
+        {
+          "name": "Consultar propietario por id (200)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{ownerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{ownerId}}"
+              ]
+            },
+            "description": "Usa el propietario creado en \"Crear propietario (201)\"."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Devuelve el usuario solicitado con rol OWNER\", () => {",
+                  "    pm.expect(body.id).to.eql(Number(pm.collectionVariables.get(\"ownerId\")));",
+                  "    pm.expect(body.role).to.eql(\"OWNER\");",
+                  "});",
+                  "pm.test(\"No expone la contrasena\", () => pm.expect(body).to.not.have.property(\"password\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar admin por id (200, rol ADMIN)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "1"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Rol ADMIN\", () => pm.expect(pm.response.json().role).to.eql(\"ADMIN\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Usuario inexistente (404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/999999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "999999999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Respuesta con formato de error estandar\", () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property(\"status\", 404);",
+                  "    pm.expect(body).to.have.property(\"message\");",
+                  "    pm.expect(body).to.have.property(\"timestamp\");",
+                  "});",
+                  "",
+                  "pm.test(\"Mensaje de usuario no encontrado\", () => {",
+                  "    pm.expect(pm.response.json().message).to.eql(\"No existe un usuario con el id indicado\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Id no numerico (400)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "abc"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Respuesta con formato de error estandar\", () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property(\"status\", 400);",
+                  "    pm.expect(body).to.have.property(\"message\");",
+                  "    pm.expect(body).to.have.property(\"timestamp\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sin token (401)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{ownerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{ownerId}}"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Respuesta con formato de error estandar\", () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property(\"status\", 401);",
+                  "    pm.expect(body).to.have.property(\"message\");",
+                  "    pm.expect(body).to.have.property(\"timestamp\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [
@@ -1099,6 +1304,10 @@
     },
     {
       "key": "ownerToken",
+      "value": ""
+    },
+    {
+      "key": "ownerId",
       "value": ""
     },
     {
