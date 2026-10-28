@@ -4,12 +4,14 @@ import com.plazoleta.usuarios.domain.exception.DocumentAlreadyExistsException;
 import com.plazoleta.usuarios.domain.exception.DomainException;
 import com.plazoleta.usuarios.domain.exception.EmailAlreadyExistsException;
 import com.plazoleta.usuarios.domain.exception.InvalidCredentialsException;
+import com.plazoleta.usuarios.domain.exception.UserNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.List;
 
@@ -19,6 +21,11 @@ public class ControllerAdvisor {
     @ExceptionHandler({EmailAlreadyExistsException.class, DocumentAlreadyExistsException.class})
     public ResponseEntity<ErrorResponse> handleConflict(DomainException ex) {
         return build(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(UserNotFoundException ex) {
+        return build(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
@@ -43,6 +50,11 @@ public class ControllerAdvisor {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException ex) {
         return build(HttpStatus.BAD_REQUEST, "El cuerpo de la solicitud es invalido o tiene un formato incorrecto");
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return build(HttpStatus.BAD_REQUEST, "El parametro " + ex.getName() + " tiene un formato invalido");
     }
 
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message) {
