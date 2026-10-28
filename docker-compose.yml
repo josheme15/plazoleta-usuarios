@@ -1,3 +1,6 @@
+# Todos los microservicios usan el proyecto "plazoleta" para agruparse en Docker Desktop.
+name: plazoleta
+
 services:
   postgres-usuarios:
     image: postgres:16
@@ -13,3 +16,4 @@ services:
 
 volumes:
   usuarios-data:
+    name: plazoleta-usuarios_usuarios-data
