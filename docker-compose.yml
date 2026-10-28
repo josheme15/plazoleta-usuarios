@@ -1,0 +1,15 @@
+services:
+  postgres-usuarios:
+    image: postgres:16
+    container_name: postgres-usuarios
+    environment:
+      POSTGRES_DB: plazoleta_usuarios
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - usuarios-data:/var/lib/postgresql/data
+
+volumes:
+  usuarios-data:

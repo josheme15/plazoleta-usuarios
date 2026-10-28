@@ -1,0 +1,29 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: plazoleta-usuarios
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/plazoleta_usuarios}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+security:
+  jwt:
+    # Clave Base64 de al menos 256 bits. Compartida con el resto de microservicios para validar tokens.
+    secret: ${JWT_SECRET:cGxhem9sZXRhLWRlLWNvbWlkYXMtc2VjcmV0by1zdXBlci1zZWd1cm8tMjU2LWJpdHM=}
+    expiration-ms: ${JWT_EXPIRATION_MS:3600000}
+
+admin:
+  seed:
+    email: ${ADMIN_EMAIL:admin@plazoleta.com}
+    password: ${ADMIN_PASSWORD:Admin123*}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
