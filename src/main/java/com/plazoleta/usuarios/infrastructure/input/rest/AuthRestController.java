@@ -26,11 +26,14 @@ public class AuthRestController {
 
     private final IAuthHandler authHandler;
 
-    @Operation(summary = "Iniciar sesion", description = "Devuelve un JWT con el rol del usuario")
+    @Operation(summary = "Iniciar sesion",
+            description = "Inicia sesion con correo y contrasena (para ADMIN, OWNER, EMPLOYEE y CLIENT). Devuelve un "
+                    + "JWT y el rol del usuario para mostrar las opciones que le corresponden. Los intentos son "
+                    + "ilimitados. No existe recuperacion de contrasena en esta version.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Autenticacion exitosa",
                     content = @Content(schema = @Schema(implementation = LoginResponseDto.class))),
-            @ApiResponse(responseCode = "400", description = "Campos obligatorios faltantes",
+            @ApiResponse(responseCode = "400", description = "Campos obligatorios faltantes o correo con formato invalido",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "401", description = "Correo o contrasena incorrectos",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
