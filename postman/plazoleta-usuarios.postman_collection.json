@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Plazoleta - Usuarios",
-    "description": "Pruebas del microservicio plazoleta-usuarios.\n\nOrden de ejecucion: 01 Autenticacion -> 02 HU-1 -> 03 Seguridad -> 04 HU-2 (usar el Collection Runner).\nRequiere el servicio en ejecucion (mvn spring-boot:run) y PostgreSQL (docker compose up -d).",
+    "description": "Pruebas del microservicio plazoleta-usuarios.\n\nOrden de ejecucion: 01 Autenticacion -> 02 HU-1 -> 03 Seguridad -> 04 HU-2 (la HU-5 de autenticacion esta en 01 y 03) (usar el Collection Runner).\nRequiere el servicio en ejecucion (mvn spring-boot:run) y PostgreSQL (docker compose up -d).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -68,6 +68,11 @@
                   "pm.test(\"El token contiene rol ADMIN\", () => {",
                   "    const payload = JSON.parse(require(\"atob\")(pm.collectionVariables.get(\"adminToken\").split(\".\")[1]));",
                   "    pm.expect(payload.role).to.eql(\"ADMIN\");",
+                  "});",
+                  "pm.test(\"La respuesta incluye el rol y el id del usuario (HU-5)\", () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.role).to.eql(\"ADMIN\");",
+                  "    pm.expect(body.userId).to.be.a(\"number\");",
                   "});"
                 ]
               }
@@ -229,6 +234,118 @@
                   "",
                   "pm.test(\"Detalla los campos faltantes\", () => {",
                   "    pm.expect(pm.response.json().details).to.have.length(2);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login correo con formato invalido (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"no-es-un-correo\",\n  \"password\": \"Admin123*\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Detalle sobre el email\", () => {",
+                  "    pm.expect(pm.response.json().details.join(\" \")).to.include(\"email\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Intentos ilimitados: 3 fallidos y luego correcto (200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Antes de este request se hacen 3 intentos con clave incorrecta: la cuenta no debe bloquearse.",
+                  "const failed = { url: pm.environment.get(\"baseUrl\") + \"/auth/login\", method: \"POST\",",
+                  "    header: { \"Content-Type\": \"application/json\" },",
+                  "    body: { mode: \"raw\", raw: JSON.stringify({ email: pm.environment.get(\"adminEmail\"), password: \"Incorrecta1*\" }) } };",
+                  "for (let i = 0; i < 3; i++) {",
+                  "    pm.sendRequest(failed, (err, res) => { if (!err) { console.log(\"Intento fallido \" + (i + 1) + \": \" + res.code); } });",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 tras varios intentos fallidos\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Devuelve token y rol\", () => {",
+                  "    pm.expect(pm.response.json().token).to.be.a(\"string\");",
+                  "    pm.expect(pm.response.json().role).to.eql(\"ADMIN\");",
                   "});"
                 ]
               }
@@ -1022,7 +1139,8 @@
                   "pm.collectionVariables.set(\"ownerToken\", token);",
                   "pm.test(\"El token contiene rol OWNER\", () => {",
                   "    pm.expect(JSON.parse(require(\"atob\")(token.split(\".\")[1])).role).to.eql(\"OWNER\");",
-                  "});"
+                  "});",
+                  "pm.test(\"La respuesta indica rol OWNER (HU-5)\", () => pm.expect(pm.response.json().role).to.eql(\"OWNER\"));"
                 ]
               }
             }
