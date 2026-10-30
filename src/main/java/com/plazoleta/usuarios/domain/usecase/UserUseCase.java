@@ -13,6 +13,7 @@ import com.plazoleta.usuarios.domain.model.Role;
 import com.plazoleta.usuarios.domain.model.User;
 import com.plazoleta.usuarios.domain.spi.IPasswordEncoderPort;
 import com.plazoleta.usuarios.domain.spi.IUserPersistencePort;
+import com.plazoleta.usuarios.domain.validation.EmailValidator;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -21,8 +22,6 @@ import java.util.regex.Pattern;
 
 public class UserUseCase implements IUserServicePort {
 
-    private static final Pattern EMAIL_PATTERN =
-            Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
     // Maximo 13 caracteres: '+' opcional seguido de hasta 12 digitos, o hasta 13 digitos sin '+'.
     private static final Pattern PHONE_PATTERN = Pattern.compile("^(\\+\\d{1,12}|\\d{1,13})$");
     private static final Pattern DOCUMENT_PATTERN = Pattern.compile("^\\d+$");
@@ -87,7 +86,7 @@ public class UserUseCase implements IUserServicePort {
     }
 
     private void validateEmail(String email) {
-        if (!EMAIL_PATTERN.matcher(email).matches()) {
+        if (!EmailValidator.isValid(email)) {
             throw new InvalidEmailException();
         }
     }
