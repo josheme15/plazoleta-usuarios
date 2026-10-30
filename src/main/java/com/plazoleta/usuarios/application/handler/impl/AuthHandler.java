@@ -4,6 +4,7 @@ import com.plazoleta.usuarios.application.dto.request.LoginRequestDto;
 import com.plazoleta.usuarios.application.dto.response.LoginResponseDto;
 import com.plazoleta.usuarios.application.handler.IAuthHandler;
 import com.plazoleta.usuarios.domain.api.IAuthServicePort;
+import com.plazoleta.usuarios.domain.model.AuthenticatedSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -15,7 +16,8 @@ public class AuthHandler implements IAuthHandler {
 
     @Override
     public LoginResponseDto login(LoginRequestDto loginRequestDto) {
-        return new LoginResponseDto(
-                authServicePort.login(loginRequestDto.getEmail(), loginRequestDto.getPassword()));
+        AuthenticatedSession session =
+                authServicePort.login(loginRequestDto.getEmail(), loginRequestDto.getPassword());
+        return new LoginResponseDto(session.getToken(), session.getUserId(), session.getRole().name());
     }
 }
