@@ -40,7 +40,8 @@ public class UserEntity {
     @Column(nullable = false, length = 13)
     private String phone;
 
-    @Column(name = "birth_date", nullable = false)
+    // Obligatoria para propietarios (se valida en el dominio); los empleados no la registran.
+    @Column(name = "birth_date")
     private LocalDate birthDate;
 
     @Column(nullable = false, unique = true, length = 150)
@@ -52,4 +53,8 @@ public class UserEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role;
+
+    // Solo para empleados: id del restaurante (vive en el microservicio de plazoleta).
+    @Column(name = "restaurant_id")
+    private Long restaurantId;
 }

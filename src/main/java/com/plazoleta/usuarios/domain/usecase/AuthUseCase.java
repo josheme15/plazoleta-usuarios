@@ -43,6 +43,7 @@ public class AuthUseCase implements IAuthServicePort {
         if (!passwordEncoderPort.matches(password, user.getPassword())) {
             throw new InvalidCredentialsException();
         }
-        return new AuthenticatedSession(tokenGeneratorPort.generateToken(user), user.getId(), user.getRole());
+        return new AuthenticatedSession(tokenGeneratorPort.generateToken(user), user.getId(), user.getRole(),
+                user.getRestaurantId());
     }
 }

@@ -5,12 +5,17 @@ import com.plazoleta.usuarios.domain.exception.EmailAlreadyExistsException;
 import com.plazoleta.usuarios.domain.exception.InvalidDocumentException;
 import com.plazoleta.usuarios.domain.exception.InvalidEmailException;
 import com.plazoleta.usuarios.domain.exception.InvalidPhoneException;
+import com.plazoleta.usuarios.domain.exception.InvalidRoleException;
+import com.plazoleta.usuarios.domain.exception.NotRestaurantOwnerException;
 import com.plazoleta.usuarios.domain.exception.RequiredFieldException;
+import com.plazoleta.usuarios.domain.exception.RestaurantNotFoundException;
 import com.plazoleta.usuarios.domain.exception.UnderageUserException;
 import com.plazoleta.usuarios.domain.exception.UserNotFoundException;
 import com.plazoleta.usuarios.domain.model.Role;
 import com.plazoleta.usuarios.domain.model.User;
+import com.plazoleta.usuarios.domain.spi.IAuthenticatedUserPort;
 import com.plazoleta.usuarios.domain.spi.IPasswordEncoderPort;
+import com.plazoleta.usuarios.domain.spi.IRestaurantClientPort;
 import com.plazoleta.usuarios.domain.spi.IUserPersistencePort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,12 +53,19 @@ class UserUseCaseTest {
     @Mock
     private IPasswordEncoderPort passwordEncoderPort;
 
+    @Mock
+    private IRestaurantClientPort restaurantClientPort;
+
+    @Mock
+    private IAuthenticatedUserPort authenticatedUserPort;
+
     private UserUseCase userUseCase;
 
     @BeforeEach
     void setUp() {
         Clock fixedClock = Clock.fixed(TODAY.atStartOfDay(ZoneOffset.UTC).toInstant(), ZoneOffset.UTC);
-        userUseCase = new UserUseCase(userPersistencePort, passwordEncoderPort, fixedClock);
+        userUseCase = new UserUseCase(userPersistencePort, passwordEncoderPort, restaurantClientPort,
+                authenticatedUserPort, fixedClock);
     }
 
     private User validUser() {
@@ -261,5 +273,155 @@ class UserUseCaseTest {
     void getUserById_withNullId_throwsException() {
         assertThrows(RequiredFieldException.class, () -> userUseCase.getUserById(null));
         verify(userPersistencePort, never()).findById(any());
+    }
+
+    // ---------- HU-6: crear empleado ----------
+
+    private static final Long OWNER_ID = 2L;
+    private static final Long RESTAURANT_ID = 10L;
+    private static final Long EMPLOYEE_ROLE_ID = 3L;
+
+    private User validEmployee() {
+        User employee = new User(null, "Maria", "Lopez", "1098765432", "+573001234567",
+                null, "maria.lopez@correo.com", RAW_PASSWORD, null);
+        employee.setRestaurantId(RESTAURANT_ID);
+        return employee;
+    }
+
+    private void givenAuthenticatedOwnerOfRestaurant() {
+        when(restaurantClientPort.findRestaurantOwnerId(RESTAURANT_ID)).thenReturn(Optional.of(OWNER_ID));
+        when(authenticatedUserPort.getAuthenticatedUserId()).thenReturn(OWNER_ID);
+    }
+
+    @Test
+    void createEmployee_withValidData_savesUserWithEmployeeRoleRestaurantAndEncryptedPassword() {
+        givenAuthenticatedOwnerOfRestaurant();
+        when(passwordEncoderPort.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
+        when(userPersistencePort.saveUser(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        User result = userUseCase.createEmployee(validEmployee(), EMPLOYEE_ROLE_ID);
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userPersistencePort).saveUser(captor.capture());
+        assertEquals(Role.EMPLOYEE, captor.getValue().getRole());
+        assertEquals(ENCODED_PASSWORD, captor.getValue().getPassword());
+        assertEquals(RESTAURANT_ID, captor.getValue().getRestaurantId());
+        assertSame(captor.getValue(), result);
+    }
+
+    @Test
+    void createEmployee_doesNotRequireBirthDate() {
+        givenAuthenticatedOwnerOfRestaurant();
+        when(passwordEncoderPort.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
+        when(userPersistencePort.saveUser(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        User employee = validEmployee();
+        employee.setBirthDate(null);
+
+        assertEquals(Role.EMPLOYEE, userUseCase.createEmployee(employee, EMPLOYEE_ROLE_ID).getRole());
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {1L, 2L, 4L, 99L})
+    void createEmployee_withRoleIdDifferentFromEmployee_throwsException(long roleId) {
+        assertThrows(InvalidRoleException.class, () -> userUseCase.createEmployee(validEmployee(), roleId));
+        verify(restaurantClientPort, never()).findRestaurantOwnerId(any());
+        verify(userPersistencePort, never()).saveUser(any());
+    }
+
+    @Test
+    void createEmployee_withNullRoleId_throwsException() {
+        assertThrows(RequiredFieldException.class, () -> userUseCase.createEmployee(validEmployee(), null));
+    }
+
+    @Test
+    void createEmployee_withNullRestaurant_throwsException() {
+        User employee = validEmployee();
+        employee.setRestaurantId(null);
+
+        assertThrows(RequiredFieldException.class, () -> userUseCase.createEmployee(employee, EMPLOYEE_ROLE_ID));
+        verify(restaurantClientPort, never()).findRestaurantOwnerId(any());
+    }
+
+    @Test
+    void createEmployee_whenRestaurantDoesNotExist_throwsException() {
+        when(restaurantClientPort.findRestaurantOwnerId(RESTAURANT_ID)).thenReturn(Optional.empty());
+
+        assertThrows(RestaurantNotFoundException.class,
+                () -> userUseCase.createEmployee(validEmployee(), EMPLOYEE_ROLE_ID));
+        verify(userPersistencePort, never()).saveUser(any());
+    }
+
+    @Test
+    void createEmployee_whenOwnerIsNotOwnerOfThatRestaurant_throwsException() {
+        when(restaurantClientPort.findRestaurantOwnerId(RESTAURANT_ID)).thenReturn(Optional.of(OWNER_ID));
+        when(authenticatedUserPort.getAuthenticatedUserId()).thenReturn(99L);
+
+        assertThrows(NotRestaurantOwnerException.class,
+                () -> userUseCase.createEmployee(validEmployee(), EMPLOYEE_ROLE_ID));
+        verify(userPersistencePort, never()).existsByEmail(any());
+        verify(userPersistencePort, never()).saveUser(any());
+    }
+
+    @Test
+    void createEmployee_whenEmailAlreadyExists_throwsException() {
+        givenAuthenticatedOwnerOfRestaurant();
+        when(userPersistencePort.existsByEmail("maria.lopez@correo.com")).thenReturn(true);
+
+        assertThrows(EmailAlreadyExistsException.class,
+                () -> userUseCase.createEmployee(validEmployee(), EMPLOYEE_ROLE_ID));
+        verify(userPersistencePort, never()).saveUser(any());
+    }
+
+    @Test
+    void createEmployee_whenDocumentAlreadyExists_throwsException() {
+        givenAuthenticatedOwnerOfRestaurant();
+        when(userPersistencePort.existsByEmail(any())).thenReturn(false);
+        when(userPersistencePort.existsByDocumentNumber("1098765432")).thenReturn(true);
+
+        assertThrows(DocumentAlreadyExistsException.class,
+                () -> userUseCase.createEmployee(validEmployee(), EMPLOYEE_ROLE_ID));
+        verify(userPersistencePort, never()).saveUser(any());
+    }
+
+    @Test
+    void createEmployee_withInvalidEmail_throwsException() {
+        User employee = validEmployee();
+        employee.setEmail("maria.lopez");
+
+        assertThrows(InvalidEmailException.class, () -> userUseCase.createEmployee(employee, EMPLOYEE_ROLE_ID));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"+5730012345678", "300abc4567"})
+    void createEmployee_withInvalidPhone_throwsException(String phone) {
+        User employee = validEmployee();
+        employee.setPhone(phone);
+
+        assertThrows(InvalidPhoneException.class, () -> userUseCase.createEmployee(employee, EMPLOYEE_ROLE_ID));
+    }
+
+    @Test
+    void createEmployee_withNonNumericDocument_throwsException() {
+        User employee = validEmployee();
+        employee.setDocumentNumber("10987A");
+
+        assertThrows(InvalidDocumentException.class, () -> userUseCase.createEmployee(employee, EMPLOYEE_ROLE_ID));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"firstName", "lastName", "documentNumber", "phone", "email", "password"})
+    void createEmployee_withMissingRequiredField_throwsException(String field) {
+        User employee = validEmployee();
+        switch (field) {
+            case "firstName" -> employee.setFirstName(" ");
+            case "lastName" -> employee.setLastName(null);
+            case "documentNumber" -> employee.setDocumentNumber("");
+            case "phone" -> employee.setPhone(null);
+            case "email" -> employee.setEmail("");
+            default -> employee.setPassword(null);
+        }
+
+        assertThrows(RequiredFieldException.class, () -> userUseCase.createEmployee(employee, EMPLOYEE_ROLE_ID));
+        verify(userPersistencePort, never()).saveUser(any());
     }
 }

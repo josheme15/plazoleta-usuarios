@@ -4,7 +4,10 @@ import com.plazoleta.usuarios.domain.exception.DocumentAlreadyExistsException;
 import com.plazoleta.usuarios.domain.exception.DomainException;
 import com.plazoleta.usuarios.domain.exception.EmailAlreadyExistsException;
 import com.plazoleta.usuarios.domain.exception.InvalidCredentialsException;
+import com.plazoleta.usuarios.domain.exception.NotRestaurantOwnerException;
+import com.plazoleta.usuarios.domain.exception.RestaurantNotFoundException;
 import com.plazoleta.usuarios.domain.exception.UserNotFoundException;
+import com.plazoleta.usuarios.infrastructure.output.client.exception.PlazoletaServiceUnavailableException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -23,9 +26,19 @@ public class ControllerAdvisor {
         return build(HttpStatus.CONFLICT, ex.getMessage());
     }
 
-    @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNotFound(UserNotFoundException ex) {
+    @ExceptionHandler({UserNotFoundException.class, RestaurantNotFoundException.class})
+    public ResponseEntity<ErrorResponse> handleNotFound(DomainException ex) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(NotRestaurantOwnerException.class)
+    public ResponseEntity<ErrorResponse> handleNotRestaurantOwner(NotRestaurantOwnerException ex) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(PlazoletaServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handlePlazoletaUnavailable(PlazoletaServiceUnavailableException ex) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)

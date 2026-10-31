@@ -17,6 +17,7 @@ public class JwtService implements ITokenGeneratorPort {
 
     public static final String CLAIM_ROLE = "role";
     public static final String CLAIM_USER_ID = "id";
+    public static final String CLAIM_RESTAURANT_ID = "restaurantId";
 
     private final SecretKey key;
     private final long expirationMs;
@@ -30,10 +31,15 @@ public class JwtService implements ITokenGeneratorPort {
     @Override
     public String generateToken(User user) {
         Date now = new Date();
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(user.getEmail())
                 .claim(CLAIM_USER_ID, user.getId())
-                .claim(CLAIM_ROLE, user.getRole().name())
+                .claim(CLAIM_ROLE, user.getRole().name());
+        if (user.getRestaurantId() != null) {
+            // Para empleados: plazoleta sabra de que restaurante son sin consultar a usuarios.
+            builder.claim(CLAIM_RESTAURANT_ID, user.getRestaurantId());
+        }
+        return builder
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expirationMs))
                 .signWith(key)
