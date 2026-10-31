@@ -21,4 +21,7 @@ public class LoginResponseDto {
 
     @Schema(example = "OWNER", description = "ADMIN, OWNER, EMPLOYEE o CLIENT")
     private String role;
+
+    @Schema(example = "1", description = "Solo para empleados: restaurante al que pertenecen (null en otros roles)")
+    private Long restaurantId;
 }

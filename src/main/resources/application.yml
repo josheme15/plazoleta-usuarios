@@ -19,6 +19,10 @@ security:
     secret: ${JWT_SECRET:cGxhem9sZXRhLWRlLWNvbWlkYXMtc2VjcmV0by1zdXBlci1zZWd1cm8tMjU2LWJpdHM=}
     expiration-ms: ${JWT_EXPIRATION_MS:3600000}
 
+clients:
+  plazoleta:
+    url: ${PLAZOLETA_URL:http://localhost:8082}
+
 admin:
   seed:
     email: ${ADMIN_EMAIL:admin@plazoleta.com}

@@ -21,4 +21,6 @@ public class UserResponseDto {
     private LocalDate birthDate;
     private String email;
     private String role;
+    // Solo para empleados: restaurante al que pertenecen.
+    private Long restaurantId;
 }

@@ -18,6 +18,7 @@ public class AuthHandler implements IAuthHandler {
     public LoginResponseDto login(LoginRequestDto loginRequestDto) {
         AuthenticatedSession session =
                 authServicePort.login(loginRequestDto.getEmail(), loginRequestDto.getPassword());
-        return new LoginResponseDto(session.getToken(), session.getUserId(), session.getRole().name());
+        return new LoginResponseDto(session.getToken(), session.getUserId(), session.getRole().name(),
+                session.getRestaurantId());
     }
 }

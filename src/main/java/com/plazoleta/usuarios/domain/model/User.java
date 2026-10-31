@@ -13,6 +13,8 @@ public class User {
     private String email;
     private String password;
     private Role role;
+    // Solo para empleados: restaurante al que pertenecen.
+    private Long restaurantId;
 
     public User() {
     }
@@ -56,4 +58,7 @@ public class User {
 
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
+
+    public Long getRestaurantId() { return restaurantId; }
+    public void setRestaurantId(Long restaurantId) { this.restaurantId = restaurantId; }
 }
