@@ -1,5 +1,6 @@
 package com.plazoleta.usuarios.infrastructure.input.rest;
 
+import com.plazoleta.usuarios.application.dto.request.EmployeeRequestDto;
 import com.plazoleta.usuarios.application.dto.request.OwnerRequestDto;
 import com.plazoleta.usuarios.application.dto.response.UserResponseDto;
 import com.plazoleta.usuarios.application.handler.IUserHandler;
@@ -49,6 +50,36 @@ public class UserRestController {
     @PostMapping("/owner")
     public ResponseEntity<UserResponseDto> createOwner(@Valid @RequestBody OwnerRequestDto ownerRequestDto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(userHandler.createOwner(ownerRequestDto));
+    }
+
+    @Operation(summary = "Crear empleado",
+            description = "Crea un usuario con rol EMPLEADO asociado a un restaurante. Solo el PROPIETARIO de ese "
+                    + "restaurante puede hacerlo. El idRol debe ser 3 (empleado). El dueno del restaurante se "
+                    + "valida consultando al microservicio de plazoleta.",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Empleado creado",
+                    content = @Content(schema = @Schema(implementation = UserResponseDto.class))),
+            @ApiResponse(responseCode = "400",
+                    description = "Datos invalidos: campos obligatorios, correo, celular, documento o idRol distinto "
+                            + "al rol empleado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente, invalido o expirado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403",
+                    description = "El usuario no tiene rol PROPIETARIO o no es el dueno del restaurante",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "No existe un restaurante con el id indicado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "Ya existe un usuario con ese correo o documento",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "503", description = "El servicio de plazoleta no esta disponible",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/employee")
+    public ResponseEntity<UserResponseDto> createEmployee(
+            @Valid @RequestBody EmployeeRequestDto employeeRequestDto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(userHandler.createEmployee(employeeRequestDto));
     }
 
     @Operation(summary = "Consultar usuario por id",
