@@ -68,7 +68,7 @@ class EndpointSecurityTest {
 
     @Test
     void login_isPublic_noTokenRequired() throws Exception {
-        when(authHandler.login(any())).thenReturn(new LoginResponseDto("jwt", 1L, "ADMIN"));
+        when(authHandler.login(any())).thenReturn(new LoginResponseDto("jwt", 1L, "ADMIN", null));
 
         mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"admin@plazoleta.com\",\"password\":\"Admin123*\"}"))
@@ -113,6 +113,35 @@ class EndpointSecurityTest {
 
         mockMvc.perform(post("/users/owner").header(HttpHeaders.AUTHORIZATION, bearer(Role.ADMIN))
                         .contentType(MediaType.APPLICATION_JSON).content(OWNER_BODY))
+                .andExpect(status().isCreated());
+    }
+
+    // ---------- POST /users/employee: solo OWNER (HU-6) ----------
+
+    private static final String EMPLOYEE_BODY = """
+            {"firstName":"Maria","lastName":"Lopez","documentNumber":"1098765432","phone":"+573001234567",
+             "email":"maria@correo.com","roleId":3,"password":"Clave123*","restaurantId":10}""";
+
+    @Test
+    void createEmployee_withoutToken_returns401() throws Exception {
+        mockMvc.perform(post("/users/employee").contentType(MediaType.APPLICATION_JSON).content(EMPLOYEE_BODY))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Role.class, names = {"ADMIN", "EMPLOYEE", "CLIENT"})
+    void createEmployee_withNonOwnerRole_returns403(Role role) throws Exception {
+        mockMvc.perform(post("/users/employee").header(HttpHeaders.AUTHORIZATION, bearer(role))
+                        .contentType(MediaType.APPLICATION_JSON).content(EMPLOYEE_BODY))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void createEmployee_withOwnerRole_returns201() throws Exception {
+        when(userHandler.createEmployee(any())).thenReturn(new UserResponseDto());
+
+        mockMvc.perform(post("/users/employee").header(HttpHeaders.AUTHORIZATION, bearer(Role.OWNER))
+                        .contentType(MediaType.APPLICATION_JSON).content(EMPLOYEE_BODY))
                 .andExpect(status().isCreated());
     }
 

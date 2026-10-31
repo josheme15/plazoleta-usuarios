@@ -67,6 +67,21 @@ class AuthUseCaseTest {
         assertEquals("jwt-token", session.getToken());
         assertEquals(1L, session.getUserId());
         assertEquals(Role.ADMIN, session.getRole());
+        assertEquals(null, session.getRestaurantId());
+    }
+
+    @Test
+    void login_asEmployee_returnsSessionWithRestaurantId() {
+        User employee = storedUser(Role.EMPLOYEE);
+        employee.setRestaurantId(10L);
+        when(userPersistencePort.findByEmail(EMAIL)).thenReturn(Optional.of(employee));
+        when(passwordEncoderPort.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
+        when(tokenGeneratorPort.generateToken(employee)).thenReturn("jwt-empleado");
+
+        AuthenticatedSession session = authUseCase.login(EMAIL, RAW_PASSWORD);
+
+        assertEquals(Role.EMPLOYEE, session.getRole());
+        assertEquals(10L, session.getRestaurantId());
     }
 
     @ParameterizedTest
