@@ -6,12 +6,17 @@ import com.plazoleta.usuarios.domain.exception.EmailAlreadyExistsException;
 import com.plazoleta.usuarios.domain.exception.InvalidDocumentException;
 import com.plazoleta.usuarios.domain.exception.InvalidEmailException;
 import com.plazoleta.usuarios.domain.exception.InvalidPhoneException;
+import com.plazoleta.usuarios.domain.exception.InvalidRoleException;
+import com.plazoleta.usuarios.domain.exception.NotRestaurantOwnerException;
 import com.plazoleta.usuarios.domain.exception.RequiredFieldException;
+import com.plazoleta.usuarios.domain.exception.RestaurantNotFoundException;
 import com.plazoleta.usuarios.domain.exception.UnderageUserException;
 import com.plazoleta.usuarios.domain.exception.UserNotFoundException;
 import com.plazoleta.usuarios.domain.model.Role;
 import com.plazoleta.usuarios.domain.model.User;
+import com.plazoleta.usuarios.domain.spi.IAuthenticatedUserPort;
 import com.plazoleta.usuarios.domain.spi.IPasswordEncoderPort;
+import com.plazoleta.usuarios.domain.spi.IRestaurantClientPort;
 import com.plazoleta.usuarios.domain.spi.IUserPersistencePort;
 import com.plazoleta.usuarios.domain.validation.EmailValidator;
 
@@ -29,34 +34,51 @@ public class UserUseCase implements IUserServicePort {
 
     private final IUserPersistencePort userPersistencePort;
     private final IPasswordEncoderPort passwordEncoderPort;
+    private final IRestaurantClientPort restaurantClientPort;
+    private final IAuthenticatedUserPort authenticatedUserPort;
     private final Clock clock;
 
     public UserUseCase(IUserPersistencePort userPersistencePort,
                        IPasswordEncoderPort passwordEncoderPort,
+                       IRestaurantClientPort restaurantClientPort,
+                       IAuthenticatedUserPort authenticatedUserPort,
                        Clock clock) {
         this.userPersistencePort = userPersistencePort;
         this.passwordEncoderPort = passwordEncoderPort;
+        this.restaurantClientPort = restaurantClientPort;
+        this.authenticatedUserPort = authenticatedUserPort;
         this.clock = clock;
     }
 
     @Override
     public User createOwner(User user) {
-        validateRequiredFields(user);
-        validateEmail(user.getEmail());
-        validatePhone(user.getPhone());
-        validateDocument(user.getDocumentNumber());
+        validateRequiredFields(user, true);
+        validateFormats(user);
         validateAdult(user.getBirthDate());
-
-        if (userPersistencePort.existsByEmail(user.getEmail())) {
-            throw new EmailAlreadyExistsException();
-        }
-        if (userPersistencePort.existsByDocumentNumber(user.getDocumentNumber())) {
-            throw new DocumentAlreadyExistsException();
-        }
+        validateUniqueEmailAndDocument(user);
 
         user.setRole(Role.OWNER);
-        user.setPassword(passwordEncoderPort.encode(user.getPassword()));
-        return userPersistencePort.saveUser(user);
+        return saveWithEncodedPassword(user);
+    }
+
+    @Override
+    public User createEmployee(User employee, Long roleId) {
+        validateRequiredFields(employee, false);
+        if (roleId == null) {
+            throw new RequiredFieldException("idRol");
+        }
+        if (employee.getRestaurantId() == null) {
+            throw new RequiredFieldException("idRestaurante");
+        }
+        validateFormats(employee);
+        if (!Role.EMPLOYEE.getId().equals(roleId)) {
+            throw new InvalidRoleException(Role.EMPLOYEE.getId());
+        }
+        validateRestaurantOwner(employee.getRestaurantId());
+        validateUniqueEmailAndDocument(employee);
+
+        employee.setRole(Role.EMPLOYEE);
+        return saveWithEncodedPassword(employee);
     }
 
     @Override
@@ -67,12 +89,12 @@ public class UserUseCase implements IUserServicePort {
         return userPersistencePort.findById(id).orElseThrow(UserNotFoundException::new);
     }
 
-    private void validateRequiredFields(User user) {
+    private void validateRequiredFields(User user, boolean birthDateRequired) {
         requireText(user.getFirstName(), "nombre");
         requireText(user.getLastName(), "apellido");
         requireText(user.getDocumentNumber(), "documentoDeIdentidad");
         requireText(user.getPhone(), "celular");
-        if (user.getBirthDate() == null) {
+        if (birthDateRequired && user.getBirthDate() == null) {
             throw new RequiredFieldException("fechaNacimiento");
         }
         requireText(user.getEmail(), "correo");
@@ -85,20 +107,14 @@ public class UserUseCase implements IUserServicePort {
         }
     }
 
-    private void validateEmail(String email) {
-        if (!EmailValidator.isValid(email)) {
+    private void validateFormats(User user) {
+        if (!EmailValidator.isValid(user.getEmail())) {
             throw new InvalidEmailException();
         }
-    }
-
-    private void validatePhone(String phone) {
-        if (!PHONE_PATTERN.matcher(phone).matches()) {
+        if (!PHONE_PATTERN.matcher(user.getPhone()).matches()) {
             throw new InvalidPhoneException();
         }
-    }
-
-    private void validateDocument(String documentNumber) {
-        if (!DOCUMENT_PATTERN.matcher(documentNumber).matches()) {
+        if (!DOCUMENT_PATTERN.matcher(user.getDocumentNumber()).matches()) {
             throw new InvalidDocumentException();
         }
     }
@@ -107,5 +123,27 @@ public class UserUseCase implements IUserServicePort {
         if (Period.between(birthDate, LocalDate.now(clock)).getYears() < ADULT_AGE) {
             throw new UnderageUserException();
         }
+    }
+
+    private void validateRestaurantOwner(Long restaurantId) {
+        Long ownerId = restaurantClientPort.findRestaurantOwnerId(restaurantId)
+                .orElseThrow(RestaurantNotFoundException::new);
+        if (!ownerId.equals(authenticatedUserPort.getAuthenticatedUserId())) {
+            throw new NotRestaurantOwnerException();
+        }
+    }
+
+    private void validateUniqueEmailAndDocument(User user) {
+        if (userPersistencePort.existsByEmail(user.getEmail())) {
+            throw new EmailAlreadyExistsException();
+        }
+        if (userPersistencePort.existsByDocumentNumber(user.getDocumentNumber())) {
+            throw new DocumentAlreadyExistsException();
+        }
+    }
+
+    private User saveWithEncodedPassword(User user) {
+        user.setPassword(passwordEncoderPort.encode(user.getPassword()));
+        return userPersistencePort.saveUser(user);
     }
 }

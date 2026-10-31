@@ -32,10 +32,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (header != null && header.startsWith(BEARER_PREFIX)) {
             try {
-                Claims claims = jwtService.parseClaims(header.substring(BEARER_PREFIX.length()));
+                String token = header.substring(BEARER_PREFIX.length());
+                Claims claims = jwtService.parseClaims(token);
                 String role = claims.get(JwtService.CLAIM_ROLE, String.class);
+                AuthenticatedUser principal =
+                        new AuthenticatedUser(claims.get(JwtService.CLAIM_USER_ID, Long.class), claims.getSubject());
+                // El token se guarda como credencial para reenviarlo a otros microservicios.
                 var authentication = new UsernamePasswordAuthenticationToken(
-                        claims.getSubject(), null, List.of(new SimpleGrantedAuthority(ROLE_PREFIX + role)));
+                        principal, token, List.of(new SimpleGrantedAuthority(ROLE_PREFIX + role)));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (JwtException | IllegalArgumentException e) {
                 // Token invalido: el contexto queda sin autenticar y el entry point responde 401.
