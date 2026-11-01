@@ -1,5 +1,6 @@
 package com.plazoleta.usuarios.application.mapper;
 
+import com.plazoleta.usuarios.application.dto.request.ClientRequestDto;
 import com.plazoleta.usuarios.application.dto.request.EmployeeRequestDto;
 import com.plazoleta.usuarios.application.dto.request.OwnerRequestDto;
 import com.plazoleta.usuarios.domain.model.User;
@@ -19,4 +20,10 @@ public interface IUserRequestMapper {
     @Mapping(target = "role", ignore = true)
     @Mapping(target = "birthDate", ignore = true)
     User toUser(EmployeeRequestDto employeeRequestDto);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "role", ignore = true)
+    @Mapping(target = "birthDate", ignore = true)
+    @Mapping(target = "restaurantId", ignore = true)
+    User toUser(ClientRequestDto clientRequestDto);
 }

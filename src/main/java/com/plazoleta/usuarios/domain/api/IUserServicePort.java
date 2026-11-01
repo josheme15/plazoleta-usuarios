@@ -13,5 +13,12 @@ public interface IUserServicePort {
      */
     User createEmployee(User employee, Long roleId);
 
+    /**
+     * Registro publico de un cliente (no requiere estar autenticado).
+     *
+     * @param roleId idRol enviado en la solicitud; debe corresponder al rol cliente.
+     */
+    User createClient(User client, Long roleId);
+
     User getUserById(Long id);
 }

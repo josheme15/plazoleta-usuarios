@@ -145,6 +145,26 @@ class EndpointSecurityTest {
                 .andExpect(status().isCreated());
     }
 
+    // ---------- POST /users/client: publico (HU-8) ----------
+
+    private static final String CLIENT_BODY = """
+            {"firstName":"Carlos","lastName":"Ramirez","documentNumber":"1122334455","phone":"+573109876543",
+             "email":"carlos@correo.com","roleId":4,"password":"Clave123*"}""";
+
+    @Test
+    void createClient_isPublic_noTokenRequired() throws Exception {
+        when(userHandler.createClient(any())).thenReturn(new UserResponseDto());
+
+        mockMvc.perform(post("/users/client").contentType(MediaType.APPLICATION_JSON).content(CLIENT_BODY))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void createClient_withInvalidBody_returns400WithoutToken() throws Exception {
+        mockMvc.perform(post("/users/client").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
     // ---------- GET /users/{id}: cualquier usuario autenticado ----------
 
     @Test
