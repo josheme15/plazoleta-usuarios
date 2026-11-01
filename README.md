@@ -11,6 +11,16 @@ Responsable de usuarios, roles y autenticación (emisión de JWT).
 | HU-2 | Consultar usuario por id (usado por plazoleta para validar el propietario) | `GET /users/{id}` | Autenticado |
 | HU-5 | Autenticación de usuarios (login y permisos por rol) | `POST /auth/login` | Público |
 | HU-6 | Crear empleado | `POST /users/employee` | OWNER (dueño del restaurante) |
+| HU-8 | Crear cliente (registro) | `POST /users/client` | Público |
+
+### Reglas de la HU-8
+
+- El cliente **crea su propia cuenta**, por eso el endpoint es **público** (no requiere token).
+- Campos obligatorios: nombre, apellido, documento, celular, correo, **idRol** y contraseña (BCrypt).
+- `idRol` debe ser **4** (cliente); cualquier otro valor responde 400. El usuario queda con rol `CLIENT`.
+- Mismas validaciones que propietario y empleado (correo, celular, documento, duplicados 409); no se pide
+  fecha de nacimiento ni restaurante.
+- Después de registrarse, el cliente inicia sesión en `POST /auth/login` y recibe un token con rol `CLIENT`.
 
 ### Reglas de la HU-6
 
@@ -44,6 +54,7 @@ Matriz de permisos de los dos microservicios:
 | Endpoint | Microservicio | Rol permitido |
 |----------|---------------|---------------|
 | `POST /auth/login` | usuarios | Público |
+| `POST /users/client` | usuarios | Público (registro de clientes) |
 | `POST /users/owner` | usuarios | ADMIN |
 | `POST /users/employee` | usuarios | OWNER, dueño del restaurante |
 | `GET /users/{id}` | usuarios | Cualquier usuario autenticado |
@@ -99,7 +110,7 @@ curl -X POST http://localhost:8081/users/owner \
 
 En la carpeta `postman/`:
 
-- `plazoleta-usuarios.postman_collection.json`: colección con 43 peticiones (más 3 intentos fallidos automáticos) y 108 aserciones.
+- `plazoleta-usuarios.postman_collection.json`: colección con 53 peticiones (más 3 intentos fallidos automáticos) y 132 aserciones.
 - `plazoleta-local.postman_environment.json`: entorno con `baseUrl`, `plazoletaUrl`, `adminEmail` y `adminPassword`.
 
 1. En Postman: **Import** → seleccionar ambos archivos.
@@ -110,6 +121,7 @@ El orden importa: `01 - Autenticacion` guarda el token del ADMIN, `02 - HU-1` cr
 `03 - Seguridad` inicia sesión con ese propietario para probar el 403, y `04 - HU-2` lo consulta por id.
 Las pruebas de login de la HU-5 (formato de correo, intentos ilimitados, rol en la respuesta) están en `01` y `03`.
 `05 - HU-6` crea un restaurante para ese propietario en plazoleta (necesita plazoleta levantado) y luego sus empleados.
+`06 - HU-8` registra un cliente sin token e inicia sesión con él.
 Correos y documentos se generan
 únicos en cada ejecución, así que la colección se puede repetir sin limpiar la base de datos.
 

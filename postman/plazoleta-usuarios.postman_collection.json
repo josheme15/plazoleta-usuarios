@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Plazoleta - Usuarios",
-    "description": "Pruebas del microservicio plazoleta-usuarios.\n\nOrden de ejecucion: 01 -> 02 -> 03 -> 04 -> 05 HU-6 (usar el Collection Runner). La carpeta 05 necesita tambien plazoleta-plazoleta levantado ({{plazoletaUrl}}).\nRequiere el servicio en ejecucion (mvn spring-boot:run) y PostgreSQL (docker compose up -d).",
+    "description": "Pruebas del microservicio plazoleta-usuarios.\n\nOrden de ejecucion: 01 -> 02 -> 03 -> 04 -> 05 HU-6 -> 06 HU-8 (usar el Collection Runner). La carpeta 05 necesita tambien plazoleta-plazoleta levantado ({{plazoletaUrl}}).\nRequiere el servicio en ejecucion (mvn spring-boot:run) y PostgreSQL (docker compose up -d).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -2519,6 +2519,615 @@
           ]
         }
       ]
+    },
+    {
+      "name": "06 - HU-8 Crear cliente",
+      "description": "POST /users/client. Registro PUBLICO: el cliente crea su propia cuenta sin token. idRol debe ser 4.",
+      "item": [
+        {
+          "name": "Crear cliente sin token (201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/client",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "client"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Carlos\",\n  \"lastName\": \"Ramirez\",\n  \"documentNumber\": \"{{clientDocument}}\",\n  \"phone\": \"+573109876543\",\n  \"email\": \"{{clientEmail}}\",\n  \"roleId\": 4,\n  \"password\": \"Clave123*\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const unique = Date.now().toString();",
+                  "pm.collectionVariables.set(\"clientDocument\", unique.slice(-10));",
+                  "pm.collectionVariables.set(\"clientEmail\", \"cliente_\" + unique + \"@correo.com\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"El usuario queda con rol CLIENT\", () => pm.expect(body.role).to.eql(\"CLIENT\"));",
+                  "pm.test(\"No pertenece a ningun restaurante\", () => pm.expect(body.restaurantId).to.eql(null));",
+                  "pm.test(\"No expone la contrasena\", () => pm.expect(body).to.not.have.property(\"password\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login CLIENTE (200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{clientEmail}}\",\n  \"password\": \"Clave123*\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"clientToken\", body.token);",
+                  "pm.test(\"Rol CLIENT\", () => pm.expect(body.role).to.eql(\"CLIENT\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "idRol distinto de cliente (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/client",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "client"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Carlos\",\n  \"lastName\": \"Ramirez\",\n  \"documentNumber\": \"{{randomDocument}}\",\n  \"phone\": \"+573109876543\",\n  \"email\": \"{{randomEmail}}\",\n  \"roleId\": 3,\n  \"password\": \"Clave123*\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const unique = Date.now().toString();",
+                  "pm.collectionVariables.set(\"randomDocument\", unique.slice(-9));",
+                  "pm.collectionVariables.set(\"randomEmail\", \"cli_\" + unique + \"@correo.com\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Respuesta con formato de error estandar\", () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property(\"status\", 400);",
+                  "    pm.expect(body).to.have.property(\"message\");",
+                  "});",
+                  "",
+                  "pm.test(\"Mensaje de idRol\", () => {",
+                  "    pm.expect(pm.response.json().message).to.eql(\"El idRol debe corresponder al rol cliente (4)\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Campos obligatorios vacios (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/client",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "client"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"\",\n  \"lastName\": \"\",\n  \"documentNumber\": \"\",\n  \"phone\": \"\",\n  \"email\": \"\",\n  \"roleId\": null,\n  \"password\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Respuesta con formato de error estandar\", () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property(\"status\", 400);",
+                  "    pm.expect(body).to.have.property(\"message\");",
+                  "});",
+                  "",
+                  "pm.test(\"Reporta los 7 campos obligatorios\", () => {",
+                  "    const fields = pm.response.json().details.map((d) => d.split(\":\")[0]);",
+                  "    [\"firstName\", \"lastName\", \"documentNumber\", \"phone\", \"email\", \"roleId\", \"password\"]",
+                  "        .forEach((f) => pm.expect(fields).to.include(f));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Correo invalido (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/client",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "client"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Carlos\",\n  \"lastName\": \"Ramirez\",\n  \"documentNumber\": \"{{randomDocument}}\",\n  \"phone\": \"+573109876543\",\n  \"email\": \"correo-invalido\",\n  \"roleId\": 4,\n  \"password\": \"Clave123*\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const unique = Date.now().toString();",
+                  "pm.collectionVariables.set(\"randomDocument\", unique.slice(-9));",
+                  "pm.collectionVariables.set(\"randomEmail\", \"cli_\" + unique + \"@correo.com\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Respuesta con formato de error estandar\", () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property(\"status\", 400);",
+                  "    pm.expect(body).to.have.property(\"message\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Celular con mas de 13 caracteres (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/client",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "client"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Carlos\",\n  \"lastName\": \"Ramirez\",\n  \"documentNumber\": \"{{randomDocument}}\",\n  \"phone\": \"+5731098765432\",\n  \"email\": \"{{randomEmail}}\",\n  \"roleId\": 4,\n  \"password\": \"Clave123*\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const unique = Date.now().toString();",
+                  "pm.collectionVariables.set(\"randomDocument\", unique.slice(-9));",
+                  "pm.collectionVariables.set(\"randomEmail\", \"cli_\" + unique + \"@correo.com\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Respuesta con formato de error estandar\", () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property(\"status\", 400);",
+                  "    pm.expect(body).to.have.property(\"message\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Documento no numerico (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/client",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "client"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Carlos\",\n  \"lastName\": \"Ramirez\",\n  \"documentNumber\": \"11-22-33\",\n  \"phone\": \"+573109876543\",\n  \"email\": \"{{randomEmail}}\",\n  \"roleId\": 4,\n  \"password\": \"Clave123*\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const unique = Date.now().toString();",
+                  "pm.collectionVariables.set(\"randomDocument\", unique.slice(-9));",
+                  "pm.collectionVariables.set(\"randomEmail\", \"cli_\" + unique + \"@correo.com\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Respuesta con formato de error estandar\", () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property(\"status\", 400);",
+                  "    pm.expect(body).to.have.property(\"message\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Correo duplicado (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/client",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "client"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Carlos\",\n  \"lastName\": \"Ramirez\",\n  \"documentNumber\": \"{{randomDocument}}\",\n  \"phone\": \"+573109876543\",\n  \"email\": \"{{clientEmail}}\",\n  \"roleId\": 4,\n  \"password\": \"Clave123*\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const unique = Date.now().toString();",
+                  "pm.collectionVariables.set(\"randomDocument\", unique.slice(-9));",
+                  "pm.collectionVariables.set(\"randomEmail\", \"cli_\" + unique + \"@correo.com\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Respuesta con formato de error estandar\", () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property(\"status\", 409);",
+                  "    pm.expect(body).to.have.property(\"message\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Documento duplicado (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/client",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "client"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Carlos\",\n  \"lastName\": \"Ramirez\",\n  \"documentNumber\": \"{{clientDocument}}\",\n  \"phone\": \"+573109876543\",\n  \"email\": \"{{randomEmail}}\",\n  \"roleId\": 4,\n  \"password\": \"Clave123*\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const unique = Date.now().toString();",
+                  "pm.collectionVariables.set(\"randomDocument\", unique.slice(-9));",
+                  "pm.collectionVariables.set(\"randomEmail\", \"cli_\" + unique + \"@correo.com\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Respuesta con formato de error estandar\", () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property(\"status\", 409);",
+                  "    pm.expect(body).to.have.property(\"message\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CLIENTE intenta crear propietario (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/owner",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "owner"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"X\",\n  \"lastName\": \"Y\",\n  \"documentNumber\": \"{{randomDocument}}\",\n  \"phone\": \"3001112233\",\n  \"birthDate\": \"1990-01-01\",\n  \"email\": \"{{randomEmail}}\",\n  \"password\": \"Clave123*\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "El cliente puede registrarse, pero no tiene permisos de administrador.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const unique = Date.now().toString();",
+                  "pm.collectionVariables.set(\"randomDocument\", unique.slice(-9));",
+                  "pm.collectionVariables.set(\"randomEmail\", \"cli_\" + unique + \"@correo.com\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Respuesta con formato de error estandar\", () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property(\"status\", 403);",
+                  "    pm.expect(body).to.have.property(\"message\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [
@@ -2604,6 +3213,18 @@
     },
     {
       "key": "otherOwnerDocument",
+      "value": ""
+    },
+    {
+      "key": "clientEmail",
+      "value": ""
+    },
+    {
+      "key": "clientDocument",
+      "value": ""
+    },
+    {
+      "key": "clientToken",
       "value": ""
     }
   ]
