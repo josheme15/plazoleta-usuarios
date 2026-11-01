@@ -424,4 +424,123 @@ class UserUseCaseTest {
         assertThrows(RequiredFieldException.class, () -> userUseCase.createEmployee(employee, EMPLOYEE_ROLE_ID));
         verify(userPersistencePort, never()).saveUser(any());
     }
+
+    // ---------- HU-8: crear cliente ----------
+
+    private static final Long CLIENT_ROLE_ID = 4L;
+
+    private User validClient() {
+        return new User(null, "Carlos", "Ramirez", "1122334455", "+573109876543",
+                null, "carlos.ramirez@correo.com", RAW_PASSWORD, null);
+    }
+
+    @Test
+    void createClient_withValidData_savesUserWithClientRoleAndEncryptedPassword() {
+        when(passwordEncoderPort.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
+        when(userPersistencePort.saveUser(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        User result = userUseCase.createClient(validClient(), CLIENT_ROLE_ID);
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userPersistencePort).saveUser(captor.capture());
+        assertEquals(Role.CLIENT, captor.getValue().getRole());
+        assertEquals(ENCODED_PASSWORD, captor.getValue().getPassword());
+        assertSame(captor.getValue(), result);
+    }
+
+    @Test
+    void createClient_doesNotRequireBirthDateNorRestaurantNorAuthentication() {
+        when(passwordEncoderPort.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
+        when(userPersistencePort.saveUser(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        User client = validClient();
+        client.setRestaurantId(10L);
+
+        User result = userUseCase.createClient(client, CLIENT_ROLE_ID);
+
+        assertEquals(null, result.getRestaurantId());
+        verify(authenticatedUserPort, never()).getAuthenticatedUserId();
+        verify(restaurantClientPort, never()).findRestaurantOwnerId(any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {1L, 2L, 3L, 99L})
+    void createClient_withRoleIdDifferentFromClient_throwsException(long roleId) {
+        InvalidRoleException ex = assertThrows(InvalidRoleException.class,
+                () -> userUseCase.createClient(validClient(), roleId));
+        assertEquals("El idRol debe corresponder al rol cliente (4)", ex.getMessage());
+        verify(userPersistencePort, never()).saveUser(any());
+    }
+
+    @Test
+    void createClient_withNullRoleId_throwsException() {
+        assertThrows(RequiredFieldException.class, () -> userUseCase.createClient(validClient(), null));
+        verify(userPersistencePort, never()).saveUser(any());
+    }
+
+    @Test
+    void createClient_whenEmailAlreadyExists_throwsException() {
+        when(userPersistencePort.existsByEmail("carlos.ramirez@correo.com")).thenReturn(true);
+
+        assertThrows(EmailAlreadyExistsException.class, () -> userUseCase.createClient(validClient(), CLIENT_ROLE_ID));
+        verify(userPersistencePort, never()).saveUser(any());
+    }
+
+    @Test
+    void createClient_whenDocumentAlreadyExists_throwsException() {
+        when(userPersistencePort.existsByEmail(any())).thenReturn(false);
+        when(userPersistencePort.existsByDocumentNumber("1122334455")).thenReturn(true);
+
+        assertThrows(DocumentAlreadyExistsException.class,
+                () -> userUseCase.createClient(validClient(), CLIENT_ROLE_ID));
+        verify(userPersistencePort, never()).saveUser(any());
+    }
+
+    @Test
+    void createClient_withInvalidEmail_throwsException() {
+        User client = validClient();
+        client.setEmail("carlos@correo");
+
+        assertThrows(InvalidEmailException.class, () -> userUseCase.createClient(client, CLIENT_ROLE_ID));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"+5731098765432", "310abc6543"})
+    void createClient_withInvalidPhone_throwsException(String phone) {
+        User client = validClient();
+        client.setPhone(phone);
+
+        assertThrows(InvalidPhoneException.class, () -> userUseCase.createClient(client, CLIENT_ROLE_ID));
+    }
+
+    @Test
+    void createClient_withNonNumericDocument_throwsException() {
+        User client = validClient();
+        client.setDocumentNumber("11-22-33");
+
+        assertThrows(InvalidDocumentException.class, () -> userUseCase.createClient(client, CLIENT_ROLE_ID));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"firstName", "lastName", "documentNumber", "phone", "email", "password"})
+    void createClient_withMissingRequiredField_throwsException(String field) {
+        User client = validClient();
+        switch (field) {
+            case "firstName" -> client.setFirstName("");
+            case "lastName" -> client.setLastName(" ");
+            case "documentNumber" -> client.setDocumentNumber(null);
+            case "phone" -> client.setPhone("");
+            case "email" -> client.setEmail(null);
+            default -> client.setPassword("");
+        }
+
+        assertThrows(RequiredFieldException.class, () -> userUseCase.createClient(client, CLIENT_ROLE_ID));
+        verify(userPersistencePort, never()).saveUser(any());
+    }
+
+    @Test
+    void createEmployee_withWrongRoleId_messageMentionsEmployeeRole() {
+        InvalidRoleException ex = assertThrows(InvalidRoleException.class,
+                () -> userUseCase.createEmployee(validEmployee(), CLIENT_ROLE_ID));
+        assertEquals("El idRol debe corresponder al rol empleado (3)", ex.getMessage());
+    }
 }
