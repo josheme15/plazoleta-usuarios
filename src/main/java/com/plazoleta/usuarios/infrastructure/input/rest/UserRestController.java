@@ -1,5 +1,6 @@
 package com.plazoleta.usuarios.infrastructure.input.rest;
 
+import com.plazoleta.usuarios.application.dto.request.ClientRequestDto;
 import com.plazoleta.usuarios.application.dto.request.EmployeeRequestDto;
 import com.plazoleta.usuarios.application.dto.request.OwnerRequestDto;
 import com.plazoleta.usuarios.application.dto.response.UserResponseDto;
@@ -80,6 +81,24 @@ public class UserRestController {
     public ResponseEntity<UserResponseDto> createEmployee(
             @Valid @RequestBody EmployeeRequestDto employeeRequestDto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(userHandler.createEmployee(employeeRequestDto));
+    }
+
+    @Operation(summary = "Crear cliente (registro publico)",
+            description = "Un cliente crea su propia cuenta; no requiere token. El idRol debe ser 4 (cliente). "
+                    + "Despues de registrarse, el cliente inicia sesion en POST /auth/login.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Cliente creado",
+                    content = @Content(schema = @Schema(implementation = UserResponseDto.class))),
+            @ApiResponse(responseCode = "400",
+                    description = "Datos invalidos: campos obligatorios, correo, celular, documento o idRol distinto "
+                            + "al rol cliente",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "Ya existe un usuario con ese correo o documento",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/client")
+    public ResponseEntity<UserResponseDto> createClient(@Valid @RequestBody ClientRequestDto clientRequestDto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(userHandler.createClient(clientRequestDto));
     }
 
     @Operation(summary = "Consultar usuario por id",

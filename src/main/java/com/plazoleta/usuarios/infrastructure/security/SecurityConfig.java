@@ -35,6 +35,8 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                        // HU-8: el cliente se registra solo, todavia no tiene cuenta ni token.
+                        .requestMatchers(HttpMethod.POST, "/users/client").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/users/owner").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/users/employee").hasRole("OWNER")
