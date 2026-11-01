@@ -72,13 +72,31 @@ public class UserUseCase implements IUserServicePort {
         }
         validateFormats(employee);
         if (!Role.EMPLOYEE.getId().equals(roleId)) {
-            throw new InvalidRoleException(Role.EMPLOYEE.getId());
+            throw new InvalidRoleException("empleado", Role.EMPLOYEE.getId());
         }
         validateRestaurantOwner(employee.getRestaurantId());
         validateUniqueEmailAndDocument(employee);
 
         employee.setRole(Role.EMPLOYEE);
         return saveWithEncodedPassword(employee);
+    }
+
+    @Override
+    public User createClient(User client, Long roleId) {
+        validateRequiredFields(client, false);
+        if (roleId == null) {
+            throw new RequiredFieldException("idRol");
+        }
+        validateFormats(client);
+        if (!Role.CLIENT.getId().equals(roleId)) {
+            throw new InvalidRoleException("cliente", Role.CLIENT.getId());
+        }
+        validateUniqueEmailAndDocument(client);
+
+        client.setRole(Role.CLIENT);
+        // Un cliente no pertenece a ningun restaurante.
+        client.setRestaurantId(null);
+        return saveWithEncodedPassword(client);
     }
 
     @Override
